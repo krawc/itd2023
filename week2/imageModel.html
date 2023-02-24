@@ -11,8 +11,6 @@
 <div><canvas id="canvas"></canvas></div>
 <div id="label-container"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/pose@0.8/dist/teachablemachine-pose.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.1.9/p5.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.1.9/addons/p5.dom.min.js"></script>
 
@@ -44,97 +42,72 @@
         height: 100%;
         pointer-events: none;
         object-fit: contain;
-
     }
 </style>
 
 <script type="text/javascript">
-const modelURL = 'https://teachablemachine.withgoogle.com/models/wxIcDpo-u/';
-// the json file (model topology) has a reference to the bin file (model weights)
-const checkpointURL = modelURL + "model.json";
-// the metatadata json file contains the text labels of your model and additional information
-const metadataURL = modelURL + "metadata.json";
+// Copyright (c) 2019 ml5
+//
+// This software is released under the MIT License.
+// https://opensource.org/licenses/MIT
 
+/* ===
+ml5 Example
+Webcam Image Classification using a pre-trained customized model and p5.js
+This example uses p5 preload function to create the classifier
+=== */
 
-//second model
+// Classifier Variable
+let classifier;
+// Model URL
+let imageModelURL = 'https://teachablemachine.withgoogle.com/models/S1-oOJQBf/';
 
-let classifier2;
-let imageModelURL = 'https://teachablemachine.withgoogle.com/models/bXy2kDNi/';
-
-
-
-const flip = true; // whether to flip the webcam
-
-let model;
-let totalClasses;
-let myCanvas;
-
-let classification = "None Yet";
-let probability = "100";
-let poser;
+// Video
 let video;
-
-
-// A function that loads the model from the checkpoint
-async function load() {
-  model = await tmPose.load(checkpointURL, metadataURL);
-  totalClasses = model.getTotalClasses();
-}
+let flippedVideo;
+// To store the classification
+let label = "";
 
 // Load the model first
 function preload() {
   classifier = ml5.imageClassifier(imageModelURL + 'model.json');
 }
 
-
-async function setup() {
-  myCanvas = createCanvas(600, 600);
-  // Call the load function, wait until it finishes loading
-  videoCanvas = createCanvas(600, 400)
-
-  await load();
-  video = createCapture(VIDEO, videoReady);
-  video.size(600, 400);
+function setup() {
+  createCanvas(600, 440);
+  // Create the video
+  video = createCapture(VIDEO);
+  video.size(560, 400);
   video.hide();
+
   flippedVideo = ml5.flipImage(video)
   // Start classifying
   classifyVideo();
 }
 
 function draw() {
-  background(255);
-  if(video) image(video,0,0);
-  fill(255,0,0)
-  textSize(18);
-  text("Result:" + classification, 10, 40);
+  background(0);
+  // Draw the video
+  image(flippedVideo, 0, 0);
 
-  text("Probability:" + probability, 10, 20)
-  ///ALEX insert if statement here testing classification against apppropriate part of array for this time in your video
+  // Draw the label
+  fill(255);
+  textSize(16);
+  textAlign(CENTER);
+  text(label, width / 2, height - 4);
 
-  textSize(8);
-//   if (poser) { //did we get a skeleton yet;
-//     for (var i = 0; i < poser.length; i++) {
-//       let x = poser[i].position.x;
-//       let y = poser[i].position.y;
-//       ellipse(x, y, 5, 5);
-//       text(poser[i].part, x + 4, y);
-//     }
-//   }
-
-
-  number = classification.includes('open') ? 80 : 20;
+  number = label.includes('Laughing') || label.includes('Neutral') || label.includes('Active') ? 80 : 20;
 
   g_one.drw(number);
 
-
 }
-
 
 // Get a prediction for the current video frame
 function classifyVideo() {
-    console.log('classifying')
   flippedVideo = ml5.flipImage(video)
   classifier.classify(flippedVideo, gotResult);
+
+  
 }
 
 // When we get a result
@@ -148,48 +121,8 @@ function gotResult(error, results) {
   // console.log(results[0]);
   label = results[0].label;
 
-  console.log(label);
   // Classifiy again!
   classifyVideo();
-  
-}
-
-function videoReady() {
-  console.log("Video Ready");
-  predict();
-}
-
-
-async function predict() {
-  // Prediction #1: run input through posenet
-  // predict can take in an image, video or canvas html element
-  const flipHorizontal = false;
-  const {
-    pose,
-    posenetOutput
-  } = await model.estimatePose(
-    video.elt, //webcam.canvas,
-    flipHorizontal
-  );
-  // Prediction 2: run input through teachable machine assification model
-  const prediction = await model.predict(
-    posenetOutput,
-    flipHorizontal,
-    totalClasses
-  );
-
-  // console.log(prediction);
-  
-  // Sort prediction array by probability
-  // So the first classname will have the highest probability
-  const sortedPrediction = prediction.sort((a, b) => -a.probability + b.probability);
-
-
-  //communicate these values back to draw function with global variables
-  classification = sortedPrediction[0].className;
-  probability = sortedPrediction[0].probability.toFixed(2);
-  if (pose) poser = pose.keypoints; // is there a skeleton
-  predict();
 }
 
     class gauge {
