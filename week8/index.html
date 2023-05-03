@@ -1,21 +1,57 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.10.2/p5.js"></script>
 <script language="javascript" type="text/javascript" src="https://cdn.jsdelivr.net/npm/p5.serialserver@0.0.28/lib/p5.serialport.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/IDMNYU/p5.js-speech@0.0.3/lib/p5.speech.js"></script>
-
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/addons/p5.sound.min.js"></script>
 <style>
     body {
         background-color: #000;
         font-family: sans-serif;
         height: 100vh;
+        /* background: url('assets/profile.png'); */
+        background-size: cover;
+        margin: 0;
+    }
+    img {
+      width: 100%;
+      height: auto;
+      object-fit: contain;
+    }
+
+    canvas {
+      opacity: 0.01;
+    }
+
+    button {
+      opacity: 0.1;
     }
 </style>
+<body>
+  <img src="assets/profile.png"/>
+</body>
 <script type="text/javascript">
 // serial communication between a microcontroller with a switch on pin 2
 // arduino code can be found here : https://gist.github.com/shfitz/7fd206b7db4e0e6416a443d61c8c988e
 
 let serial; // variable for the serial object
 let latestData = "waiting for data"; // variable to hold the data
+
+let wool;
+let bubble;
+let burlap;
+let plush;
+let cotton;
+let profile;
+
 let foo1;
+
+function preload() {
+  profile = loadImage('assets/profile.png')
+  wool = loadSound('assets/BlueWoolenPillow.mp3');
+   bubble = loadSound('assets/BubbleWrap.mp3');
+   burlap = loadSound('assets/BurlapPillow.mp3');
+   plush = loadSound('assets/PinkPlushPillow.mp3');
+   cotton = loadSound('assets/CottonPillow.mp3');
+}
 function setup() {
   createCanvas(windowWidth, windowHeight);
   // serial constructor
@@ -23,7 +59,7 @@ function setup() {
   // get a list of all connected serial devices
   serial.list();
   // serial port to use - you'll need to change this
-  serial.open('/dev/tty.usbmodem101');
+  serial.open('/dev/tty.usbmodem1101');
   // callback for when the sketchs connects to the server
   serial.on('connected', serverConnected);
   // callback to print the list of serial devices
@@ -40,6 +76,7 @@ function setup() {
   button = createButton('rec1');
   button.position(0, 0);
   button.mousePressed(changeBG);
+
   
 
   foo1 = new p5.Speech('Alex'); // speech synthesis object
@@ -103,6 +140,8 @@ let playing = false;
 
 function gotData() {
   let currentString = serial.readLine(); // store the data in a variable
+
+  //console.log(currentString)
   trim(currentString); // get rid of whitespace
   if (!currentString) return; // if there's nothing in there, ignore it
   //console.log(currentString); // print it out
@@ -112,51 +151,51 @@ function gotData() {
 
   latestData = currentString.split(',')
 
-  console.log(playing, parseInt(latestData[2]) > 75)
+//  console.log(playing, parseInt(latestData[2]) > 75)
 
 
     //console.log(latestData);
-    if (parseInt(latestData[1]) > 30) {
-        if (!playing) {
-            var foo = new p5.Speech('Alex'); // speech synthesis object
-            foo1.setRate(0.7)
-                        foo1.speak("Welcome to this sensorial meditation experience. In this meditation, you will be interacting with the Lego panel. This meditation is designed to help you deal with any emotions or stresses that you may be experiencing in the workplace.  During the meditation, I will guide you through a series of sensory exercises and visualizations designed to help you relax and connect with your inner self. I encourage you to follow along at your own pace and to allow yourself to fully immerse in the experience.  Remember that there is no right or wrong way to meditate, and that the most important thing is to be present and open to whatever arises in your experience.  Now, take a deep breath and allow yourself to settle into a comfortable position with your chosen texture in hand. Close your eyes if it feels comfortable, and let's begin the meditation.  As you hold the dark green lego panel in your hands, notice the hard and structured nature of the material, representing the stability and structure we seek in our work lives. The color green represents growth and abundance, reminding us that there is always potential for progress and improvement in our work.  Take a moment to reflect on any emotions or stresses that you may be experiencing in the workplace. Allow yourself to acknowledge these feelings without judgment, just observing them as they are.  Now, take a deep breath and run your fingers over the bumps and ridges on the surface of the lego panel. As you do this, imagine that each bump represents a challenge or obstacle that you have faced at work, and each ridge represents the strength and resilience you have gained from overcoming those challenges.  As you continue to explore the lego panel, allow yourself to feel a sense of gratitude for your own inner strength and resourcefulness. Even in the midst of difficulty, you have the capacity to find solutions and overcome obstacles.  Now, take a deep breath and imagine yourself building something with the lego panel. Perhaps you are constructing a tower or a bridge, representing the growth and progress that is possible in your work. As you build, allow yourself to feel a sense of excitement and possibility, imagining all the potential that lies ahead.  As you continue to work with the lego panel, allow yourself to feel a sense of pride and accomplishment for what you have built. Remember that you have the power to create and shape your own work experience, and that you are capable of achieving great things.  Take another deep breath and hold the lego panel closer to your face, noticing the intricate details and colors of the material. Allow yourself to appreciate the beauty and uniqueness of this lego panel, and feel a sense of wonder at the creativity and innovation that is possible in our work.  As you continue to hold the lego panel, take a few more deep breaths and allow yourself to sink deeper into a state of calm and relaxation. Allow your mind and body to let go of any worries or stresses, and simply be in this moment, connected to the lego panel and to the present moment.  When you feel ready, gently place the dark green lego panel down and take a few more deep breaths before returning to your day with a renewed sense of focus and motivation"); // say something
-
-            playing = true;
-            foo1.onEnd = function() {
-                playing = false;
-            }
-        }
-    } else if (parseInt(latestData[2]) > 60) {
-        if (!playing) {
-            var foo = new p5.Speech('Alex'); // speech synthesis object
-            playing = true;
-            foo1.setRate(0.7)
-            foo1.speak("Welcome to this sensorial meditation experience. In this meditation, you will be interacting with the dark sparkly foam texture. This meditation is designed to help you deal with any emotions or stresses that you may be experiencing in the workplace.  During the meditation, I will guide you through a series of sensory exercises and visualizations designed to help you relax and connect with your inner self. I encourage you to follow along at your own pace and to allow yourself to fully immerse in the experience.  Remember that there is no right or wrong way to meditate, and that the most important thing is to be present and open to whatever arises in your experience.  Now, take a deep breath and allow yourself to settle into a comfortable position with your chosen texture in hand. Close your eyes if it feels comfortable, and let's begin the meditation.  As you hold the dark grey and sparkly foam block in your hands, notice how its softness and resilience provide a sense of comfort and support. The subtle sparkle of the foam block represents the hope and optimism that lie beneath even the most challenging situations.  Take a moment to reflect on any emotions or stresses that you may be experiencing in the workplace. Allow yourself to acknowledge these feelings without judgment, just observing them as they are.  Now, take a deep breath and gently run your fingers over the surface of the foam block, feeling the tiny bubbles of air that give it its spongy texture. As you press down on the foam and feel it give way under your touch, imagine the foam absorbing any negative emotions or stresses you may be feeling, just as it absorbs water.  As you continue to explore the foam block, allow yourself to feel a sense of gratitude for this small object that provides so much comfort and support. Even in the midst of difficulty, the foam reminds us that we have the capacity to bounce back and find resilience.  Take another deep breath and hold the foam block closer to your face, noticing the subtle sparkle in the light. Allow yourself to appreciate the beauty and uniqueness of this foam block, and feel a sense of awe at the vast complexity of the universe that can create such a simple yet beautiful object.  As you continue to hold the foam block, take a few more deep breaths and allow yourself to sink deeper into a state of calm and relaxation. Allow your mind and body to let go of any worries or stresses, and simply be in this moment, connected to the foam block and to the present moment.  When you feel ready, gently place the dark grey and sparkly foam block down and take a few more deep breaths before returning to your day with a renewed sense of focus and calmness."); // say something
-            foo1.onEnd = function() {
-                playing = false;
-            }
-        }
-    } else if (parseInt(latestData[3]) > 20) {
-        if (!playing) {
-            var foo = new p5.Speech('Alex'); // speech synthesis object
-            foo1.setRate(0.7)
-            playing = true;
-                        foo1.speak("Welcome to this sensorial meditation experience. In this meditation, you will be interacting with the green bubble wrap texture. This meditation is designed to help you deal with any emotions or stresses that you may be experiencing in the workplace.  During the meditation, I will guide you through a series of sensory exercises and visualizations designed to help you relax and connect with your inner self. I encourage you to follow along at your own pace and to allow yourself to fully immerse in the experience.  Remember that there is no right or wrong way to meditate, and that the most important thing is to be present and open to whatever arises in your experience.  Now, take a deep breath and allow yourself to settle into a comfortable position with your chosen texture in hand. Close your eyes if it feels comfortable, and let's begin the meditation.   As you hold the green bubble wrap in your hands, notice the smooth surface and the small, popping bubbles. Feel the weight of the bubble wrap in your palms and the texture against your skin.  Take a moment to reflect on any emotions or stresses that you may be experiencing in the workplace. Allow yourself to acknowledge these feelings without judgment, just observing them as they are.  Now, take a deep breath and gently press down on one of the bubbles, feeling it give way under your finger. Hear the satisfying pop as the bubble bursts.  As you continue to press down on the bubbles, notice how each pop creates a small release of tension in your body. Imagine any negative emotions or stresses being released with each pop of the bubble.  As you move your fingers across the bubble wrap, notice the variations in texture and the different sizes of the bubbles. Allow yourself to play and explore, without any agenda or goal in mind.  Take another deep breath, and as you exhale, allow yourself to feel a sense of calm and relaxation. You have taken this time for yourself, to honor your emotions and find a sense of release.  When you feel ready, gently place the green bubble wrap down and take a few more deep breaths before returning to your day with a renewed sense of focus and calmness."); // say something
-
-            foo1.onEnd = function() {
-                playing = false;
-            }
-        }
+    if ((parseInt(latestData[1]) > 40) && parseInt(latestData[1]) < 60) {
+      if (!playing) {
+        burlap.play();
+        playing = true;
+      }
+    } else if ((parseInt(latestData[2]) > 40) && parseInt(latestData[2]) < 60) {
+      if (!playing) {
+        bubble.play();
+        playing = true;
+      }
+    } else if ((parseInt(latestData[3]) > 40) && parseInt(latestData[3]) < 60) {
+      if (!playing) {
+        wool.play();
+        playing = true;
+      }
+    }
+    else if ((parseInt(latestData[4]) > 40) && parseInt(latestData[4]) < 60) {
+      if (!playing) {
+        plush.play();
+        playing = true;
+      }
+    } else if ((parseInt(latestData[5]) > 40) && parseInt(latestData[5]) < 60) {
+      if (!playing) {
+        cotton.play();
+        playing = true;
+      }
     } else {
+        burlap.stop();
+        bubble.stop();
+        wool.stop();
+        plush.stop();
+        cotton.stop();
+
         playing = false;
     }
 
 }
 
 function draw() {
-  background(255, 255, 255);
-  fill(0, 0, 0);
+ // background(255, 255, 255);
+ //fill(0, 0, 0);
   text(latestData, 10, 10); // print the data to the sketch
 
   // in this example, we are reciving a 0 and a 1
@@ -167,6 +206,9 @@ function draw() {
     rectMode(CENTER);
     rect(width / 2, height / 2, 100, 100);
   }
+
+
+
 
 }
 </script>
