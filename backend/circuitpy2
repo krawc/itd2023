@@ -1,0 +1,129 @@
+# SPDX-FileCopyrightText: 2018 Kattni Rembor for Adafruit Industries
+#
+# SPDX-License-Identifier: MIT
+import digitalio
+import rotaryio
+import board
+import busio
+import p9813
+from MQTT import Create_MQTT
+from settings import settings
+import adafruit_mpr121
+import neopixel
+import time
+
+
+
+from board import *
+
+# This function is called every time that a message is received on a topic that we are listening to.
+def handle_message(client, topic, m):
+    print("New message on topic {0}: {1}".format(topic, m))
+
+
+
+encoder = rotaryio.IncrementalEncoder(board.D4, board.D3)
+encoder2 = rotaryio.IncrementalEncoder(board.A1, board.A0)
+
+#sensor = digitalio.DigitalInOut(board.D10)
+#sensor.direction = digitalio.Direction.INPUT
+
+last_position = None
+last_position2 = None
+#hello
+
+# You can find the client Id in the settings.py this is used to identify the board
+client_id = settings["client_id"]
+# This is the chanel that will be used to send and receive data
+group_number = "TA"
+
+# Create a mqtt connection based on the settings file.
+mqtt_client = Create_MQTT(client_id, handle_message)
+
+# Listen for messages on the group number
+mqtt_client.subscribe(group_number)
+
+#i2c = board.I2C()
+
+i2c = busio.I2C(board.SCL, board.SDA)
+mpr121 = adafruit_mpr121.MPR121(i2c)
+
+
+pixels1 = neopixel.NeoPixel(board.D13, 2)
+
+# Define the fade duration in milliseconds
+fade_duration = 2500
+
+# Define the number of repetitions
+num_repetitions = 24
+
+# Variable to control when to start the fading process
+start_fading = False
+
+def fade_in_out(pixels, fade_duration):
+    brightness_steps = 100
+    sleep_time = fade_duration / brightness_steps / 1000.0
+
+    for brightness in range(0, brightness_steps + 1):
+        for i in range(len(pixels)):
+            pixels[i] = (brightness, brightness, brightness)
+        pixels.show()
+        yield  # Add the yield statement here
+        time.sleep(sleep_time)
+
+    for brightness in range(brightness_steps, -1, -1):
+        for i in range(len(pixels)):
+            pixels[i] = (brightness, brightness, brightness)
+        pixels.show()
+        yield  # Add the yield statement here
+        time.sleep(sleep_time)
+
+#fade_in_out(pixels1, fade_duration)
+
+
+while True:
+    position = encoder.position
+    position2 = encoder2.position
+    if mpr121[0].value or mpr121[1].value or mpr121[2].value or mpr121[3].value:
+        print("Pin 0 touched!")
+        try:
+            mqtt_client.publish(group_number, "start")
+            # Set the start_fading variable to True when the condition is met
+            start_fading = True
+            # Check if the condition to start the fading process is met
+            if start_fading:
+                # Perform the fading in and out for the specified number of repetitions
+                #fading_generator = fade_in_out(pixels1, fade_duration)
+                for _ in range(num_repetitions):
+                    fading_generator = fade_in_out(pixels1, fade_duration)
+                    for _ in fading_generator:
+                        if last_position is None or position != last_position:
+                            try:
+                                pos = str(position) + ", " + str(position2)
+                                mqtt_client.publish(group_number, pos)
+                            except ConnectionError:
+                                print("mqtt write timeout!")
+                                time.sleep(0.5)
+                            print(position, ", ", position2)
+                start_fading = False
+            # Additional code and logic in the loop...
+        except ConnectionError:
+            print("mqtt write timeout!")
+            time.sleep(0.5)
+
+    if last_position2 is None or position2 != last_position2:
+        try:
+            pos = str(position) + ", " + str(position2)
+            mqtt_client.publish(group_number, pos)
+        except ConnectionError:
+            print("mqtt write timeout!")
+            time.sleep(0.5)
+        print(position, ", ", position2)
+    last_position = position
+    last_position2 = position2
+    
+        # This line checks for new messages for 0.1 seconds
+    #mqtt_client.loop(0.1)
+
+    # Send a message every interval
+    #if sensor.value is True:

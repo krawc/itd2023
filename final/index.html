@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/4.2.6/mqtt.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/addons/p5.sound.min.js"></script>
+
+  <script language="javascript" type="text/javascript" src="https://cdn.jsdelivr.net/npm/p5.serialserver@0.0.28/lib/p5.serialport.js"></script>
+
+  <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js-http-request/1.0.7/p5.httpRequest.min.js"></script> -->
+  <script>
+    let gptResponse;
+    let audio;
+    let isTriggered = false;
+
+    let mqttMessages = [];
+    let lastMessageTime = 0;
+    let soundTimeout;
+    const soundNames = [
+      "weather.wav",
+      "time.wav",
+      "quote.wav",
+      "activity.wav",
+      "color.wav",
+      "space.wav"
+    ];
+    let bgMusic;
+    let voiceoverInProgress = false;
+    let introPlayed = false;
+    let randomSoundIndex = 0;
+    let randomSoundPlayed = false;
+    let randomSoundEndTime = 0;
+    let meditationTimeout;
+    let lastPlayedSoundIndex = -1;
+
+    //let wheelMoved = false;
+
+    console.log('code starts')
+
+    function preload() {
+      // Load the background music
+      bgMusic = loadSound("bg.mp3");
+    }
+
+    function setup() {
+      createCanvas(400, 400);
+      noLoop();
+
+      createButton('Generate');
+
+      // Establish serial communication
+      // serial = new p5.SerialPort();
+      // serial.list();
+      // serial.open('/dev/tty.usbmodem101');
+      // serial.on('data', handleSerialData);
+    }
+
+    function handleSerialData() {
+      let message = serial.readLine();
+
+      console.log(message);
+
+      // Check if the received message is "start"
+      if (message === "start") {
+        isTriggered = true;
+        generateMeditation();
+      }
+    }
+
+  // Video: https://www.youtube.com/watch?v=YR_1uoiSLFM
+var client = mqtt.connect("wss://flaxwolverine588:ItsyBitsy1@flaxwolverine588.cloud.shiftr.io")
+
+var isPlaying = false;
+
+function EventoConectar() {
+  client.subscribe("TA", function(err) {
+    if (!err) {
+      client.publish("ALSW/Temperatura", "30");
+    }
+  })
+}
+
+function EventoMensaje(topic, message) {
+  // if (topic == "ALSW/temp") {
+  //   console.log("La Temperatura es " + message.toString());
+  // }
+  console.log(message.toString());
+
+  if (message.toString() == "touched" &&  !isPlaying && !voiceoverInProgress && !introPlayed)  {
+    audio = createAudio('welcome.wav');
+    audio.play();
+    isPlaying = true;
+    introPlayed = true;
+    audio.onended(() => {
+      isPlaying = false;
+    });
+  }
+
+  if (message.toString() == "rotate") {
+    wheelMoved();
+  }
+
+  if (message.toString() == "rotate" && !isPlaying && introPlayed) {
+    mqttMessages.push(message);
+    lastMessageTime = millis();
+
+    // Restart the sound timeout
+    clearTimeout(soundTimeout);
+    startSoundTimeout();
+  }
+  // client.end()
+}
+
+client.on("connect", EventoConectar);
+client.on("message", EventoMensaje);
+
+  async function fetchWeather() {
+  // Open-Meteo API request
+  let url = 'https://api.open-meteo.com/v1/forecast?latitude=52.0116&longitude=4.3571&hourly=temperature_2m,weathercode';
+  return new Promise((resolve, reject) => {
+
+  // Make the API request
+  fetch(url)
+    .then(response => response.json())
+    .then(data => {
+      // Extract necessary weather information from the response
+      let temperature = data.hourly?.temperature_2m?.[0];
+      let weatherCondition = data.hourly?.weathercode?.[0];
+      
+      // Create the weather sentence
+      let weatherSentence = `takes into account the weather In Delft, which is currently ${temperature} degrees with ${getWeatherDescription(weatherCondition)}. Don't mention any numbers of the weather itself, instead use it as context for the meditation.`;
+      
+      // Display the weather sentence
+      displaySentence(weatherSentence);
+
+      resolve( weatherSentence);
+    })
+    .catch(error => {
+      // Handle any errors
+      console.log('Error:', error);
+      let errorMessage = 'Failed to fetch weather information.';
+      
+      // Display the error message
+      displaySentence(errorMessage);
+    });
+  });
+}
+
+function draw() {
+  if (millis() - lastMessageTime > 6000) {
+    startSoundTimeout();
+  }
+}
+
+
+function startSoundTimeout() {
+  soundTimeout = setTimeout(playRandomSound, 500);
+}
+
+function playRandomSound() {
+  // Choose a random sound from the soundNames array
+  let randomIndex = floor(random(soundNames.length));
+
+  // Ensure the random sound is different from the last played sound
+  while (randomIndex === lastPlayedSoundIndex) {
+    randomIndex = floor(random(soundNames.length));
+  }
+
+  lastPlayedSoundIndex = randomIndex;
+
+  randomSoundIndex = randomIndex;
+  const soundName = soundNames[randomIndex];
+
+  // Play the sound
+  // ...
+  isPlaying = true;
+  audio = createAudio(soundName);
+  audio.play();
+  clearTimeout(meditationTimeout);
+  audio.onended(() => {
+    isPlaying = false;
+    meditationTimeout = setTimeout(generateMeditation, 6200);
+    randomSoundEndTime = millis() + 6000;
+  });
+
+  // Set a timeout to call generateMeditation after 6 seconds
+
+  //randomSoundEndTime = millis() + 6000;
+
+  
+}
+
+function wheelMoved() {
+  // Update the flag indicating if the random sound has played
+  randomSoundPlayed = true;
+
+  // Cancel the sound timeout
+  clearTimeout(soundTimeout);
+}
+
+function displayCurrentTime() {
+  // Get the current time
+  let currentTime = new Date();
+  
+
+  let timeSentence =  `takes into account the time of the day, which is: ${formatTime(currentTime)}. Don't state the time itself, instead use it as context for the meditation and gently guide the user.`;
+
+  // Create the time sentence
+  
+  // Display the time sentence
+//  displaySentence(timeSentence);
+
+ return timeSentence;
+}
+
+function displaySentence(sentence) {
+  background(220);
+  text(sentence, width / 2, height / 2);
+}
+
+function getWeatherDescription(weatherCode) {
+  switch (weatherCode) {
+    case '0':
+      return 'clear sky';
+    case '1':
+    case '2':
+    case '3':
+      return 'partly cloudy';
+    case '45':
+    case '48':
+      return 'foggy';
+    case '51':
+    case '53':
+    case '55':
+      return 'drizzle';
+    case '56':
+    case '57':
+      return 'freezing drizzle';
+    case '61':
+    case '63':
+    case '65':
+      return 'rain';
+    case '66':
+    case '67':
+      return 'freezing rain';
+    case '71':
+    case '73':
+    case '75':
+      return 'snowfall';
+    case '77':
+      return 'snow grains';
+    case '80':
+    case '81':
+    case '82':
+      return 'rain showers';
+    case '85':
+    case '86':
+      return 'snow showers';
+    case '95':
+      return 'thunderstorm (slight)';
+    case '96':
+    case '99':
+      return 'thunderstorm (heavy)';
+    default:
+      return 'unknown conditions';
+  }
+}
+
+function formatTime(date) {
+  let hours = String(date.getHours()).padStart(2, '0');
+  let minutes = String(date.getMinutes()).padStart(2, '0');
+  
+  return `${hours}:${minutes}`;
+}
+
+async function fetchQuoteOfTheDay() {
+  return new Promise((resolve, reject) => {
+    fetch('https://zenquotes.io/api/today')
+    .then(response => response.json())
+    .then(data => {
+      if (Array.isArray(data) && data.length > 0) {
+      const quote = data[0].q;
+      const author = data[0].a;
+     //console.log(quote);
+      resolve(`lets the user reflect on the quote of the day, which is: ${quote}. Don't state the quote verbatim, instead formulate it in a reflective way.`);
+      } else {
+        throw new Error('No quote found');
+      }
+    })
+  });
+}
+
+async function fetchBoredApi() {
+  return new Promise((resolve, reject) => {
+    fetch('https://www.boredapi.com/api/activity?type=relaxation&minaccessibility=0&maxaccessibility=0.5')
+    .then(response => response.json())
+    .then(data => {
+
+      const activity = data.activity;
+      const type = data.type;
+      const participants = data.participants;
+
+      resolve(`lets the user imagine they: ${activity}. Don't start immediately with the activity, instead gently guide the user to the activity and let them imagine they are there.`);
+
+    })
+  });
+}
+
+async function fetchColorApi() {
+  return new Promise((resolve, reject) => {
+    fetch('https://colors.zoodinkers.com/api')
+    .then(response => response.json())
+    .then(data => {
+
+      const color = data.color;
+      const hex = data.hex;
+
+      resolve(`lets the user reflect on the color of the day, which is: ${hex}. Don't list the hex code, instead present the color in a visual, meditative and emotionally appealing and sensitive way.`);
+
+    })
+  });
+}
+
+
+function fetchPlanetApi() {
+  return new Promise((resolve, reject) => {
+    const apiUrl = 'https://api.le-systeme-solaire.net/rest/bodies';
+    fetch(apiUrl)
+    .then(response => response.json())
+    //get a random planet
+    .then(data => {
+      const randomIndex = Math.floor(Math.random() * data.bodies.length);
+      const planet = data.bodies[randomIndex];
+      const planetName = planet.englishName;
+      const planetRadius = planet.meanRadius;
+      const planetGravity = planet.gravity;
+      const planetMass = planet.mass?.massValue;
+      const planetMassExponent = planet.mass?.massExponent;
+      const planetDensity = planet.density;
+      //formulate the description of the planet in a human-readable way
+      const planetDescription = `lets the user conteplate about a particular planet. The planet ${planetName} has a radius of ${planetRadius} km, a mass of ${planetMass} x 10^${planetMassExponent} kg, and a density of ${planetDensity} kg/m^3. The gravity on ${planetName} is ${planetGravity} m/s^2. Don't list any of these numbers verbatim, but use them to create a meditation that describes the planet. If the planet name has digits or special characters in it, strip them out.`;
+      resolve(planetDescription);
+    })
+  });
+}
+
+
+function fadeOutBackgroundMusic() {
+  // Fade out the background music to 30% volume over 2 seconds
+  bgMusic.fade(0.1, 2);
+}
+
+function fadeInBackgroundMusic() {
+  // Fade in the background music to full volume over 2 seconds
+  bgMusic.fade(0.2, 2);
+}
+
+function fadeOutAndStopBackgroundMusic() {
+  // Fade out the background music completely over 2 seconds
+  bgMusic.fade(0, 6);
+  // Stop the background music after 2 seconds
+  setTimeout(() => {
+    bgMusic.stop();
+    location.reload()
+  }, 6000);
+}
+
+
+
+    async function generateMeditation() {
+
+      console.log(randomSoundEndTime, millis(), randomSoundPlayed)
+
+      if (randomSoundPlayed && millis() >= randomSoundEndTime) {
+
+      //Select the API mode
+
+      // Fade in the background music over 2 seconds
+      isPlaying = true;
+      bgMusic.setVolume(0);
+      bgMusic.play();
+      bgMusic.fade(0.2, 2);
+
+
+      let situation = ''
+
+      let functionsList = [fetchWeather, displayCurrentTime, fetchQuoteOfTheDay, fetchBoredApi, fetchColorApi, fetchPlanetApi]
+
+      //bored API is not so perfect as it g
+
+        // Randomly choose between weather or time
+      // if (random() < 0.5) {
+      //   // Call weather API and display weather sentence
+      //   situation = await fetchWeather();
+      // } else {
+      //   // Display current time sentence
+      //   situation = displayCurrentTime();
+      // }
+
+      
+      //const randomIndex = Math.floor(Math.random() * functionsList.length);
+      const selectedFunction = functionsList[randomSoundIndex];
+      situation = await selectedFunction()
+
+      displaySentence(situation);
+
+      // Promise.all([fetchWeather]).then((responses) => {
+      //   for (const response of responses) {
+      //     console.log(response);
+      //   }
+      // });
+
+      // await fetchWeather().then((response) => {
+      //   console.log(response);
+      // });
+
+
+      //await console.log(situation);
+
+      // Call the ChatGPT API to generate a meditation
+      
+      let chatGPTUrl = "http://127.0.0.1:5000/api/chat";
+      let chatGPTHeaders = {
+        "Content-Type": "application/json"
+      };
+      let chatGPTData = {
+        "prompt": "Generate a 150-word meditation that " + situation + "."
+      };
+
+      await httpPost(chatGPTUrl, chatGPTHeaders, chatGPTData,  handleChatGPTResponse);
+      }
+    }
+
+    function handleChatGPTResponse(result) {
+
+      gptResponse = JSON.parse(result);
+
+
+      // Call the ChatGPT API to generate a meditation
+      let playHTUrl = "http://127.0.0.1:5000/api/voice";
+      let playHTHeaders = {
+        "Content-Type": "application/json"
+      };
+      let playHTData = {
+        "text": gptResponse,
+        "voice": "larry"
+      };
+
+      httpPost(playHTUrl, playHTHeaders, playHTData, handlePlayHTResponse);
+    }
+
+    function handlePlayHTResponse(result) {
+
+      console.log(result)
+        // Set a timeout to fade out the background music when the voiceover starts
+      fadeOutBackgroundMusic();
+      let responseJson = JSON.parse(result);
+      let audioUrl = responseJson.url;
+      audio = createAudio(audioUrl);
+      setTimeout(() => audio.play(), 2000);
+      isPlaying = true;
+      audio.onended(() => {
+        isPlaying = false;
+        // Fade in the background music when the voiceover ends
+        fadeInBackgroundMusic();
+        setTimeout(fadeOutAndStopBackgroundMusic, 6000);
+      });
+    }
+  </script>
+</head>
+<body>
+</body>
+</html>

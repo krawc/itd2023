@@ -1,0 +1,70 @@
+# SPDX-FileCopyrightText: 2018 Kattni Rembor for Adafruit Industries
+#
+# SPDX-License-Identifier: MIT
+import digitalio
+import rotaryio
+import board
+import busio
+import p9813
+from MQTT import Create_MQTT
+from settings import settings
+
+
+from board import *
+
+
+encoder = rotaryio.IncrementalEncoder(board.D4, board.D3)
+encoder2 = rotaryio.IncrementalEncoder(board.A1, board.A0)
+
+sensor = digitalio.DigitalInOut(board.D10)
+sensor.direction = digitalio.Direction.INPUT
+
+last_position = None
+last_position2 = None
+#hello
+
+# You can find the client Id in the settings.py this is used to identify the board
+client_id = settings["client_id"]
+# This is the chanel that will be used to send and receive data
+group_number = "TA"
+
+# Create a mqtt connection based on the settings file.
+mqtt_client = Create_MQTT(client_id, handle_message)
+
+# Listen for messages on the group number
+mqtt_client.subscribe(group_number)
+
+
+
+while True:
+    position = encoder.position
+    position2 = encoder2.position
+    if last_position is None or position != last_position:
+        try:
+            str = position, ", ", position2
+            mqtt_client.publish(group_number, str)
+        except ConnectionError:
+            print("mqtt write timeout!")
+            time.sleep(0.5)
+        print(position, ", ", position2)
+    if last_position2 is None or position2 != last_position2:
+        try:
+            str = position, ", ", position2
+            mqtt_client.publish(group_number, str)
+        except ConnectionError:
+            print("mqtt write timeout!")
+            time.sleep(0.5)
+        print(position, ", ", position2)
+    last_position = position
+    last_position2 = position2
+    
+        # This line checks for new messages for 0.1 seconds
+    mqtt_client.loop(0.1)
+
+    # Send a message every interval
+    if sensor.value is True:
+        try:
+            mqtt_client.publish(group_number, "start")
+        except ConnectionError:
+            print("mqtt write timeout!")
+            time.sleep(0.5)
